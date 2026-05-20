@@ -3,98 +3,110 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Locate, ChevronRight } from 'lucide-react';
 import { GroveMap } from '../components/dashboard';
-import { useIncidents } from '../hooks/useIncidents';
+import { useReports } from '../hooks/useReports';
 import { supabase } from '../lib/supabase';
-import { G, severityColor, severityFromIncident } from '../lib/grove';
+import { G } from '../lib/grove';
+import { timeAgo, isHistorical } from '../lib/timeUtils';
 
-const FILTERS = ['Last 24 h', 'Critical', 'Active', 'Resolved', 'Mine'];
+const ECO_GREEN = '#10b981';
 
-/**
- * Convert an absolute ISO timestamp into the short relative form the design
- * sheet uses: "12 min ago", "3 h ago", "2 d ago".
- */
-function shortAgo(ts) {
-    if (!ts) return '';
-    const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-    if (s < 60) return 'just now';
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m} min ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h} h ago`;
-    return `${Math.floor(h / 24)} d ago`;
+const STATUS_FILTERS = ['Active', 'Resolved', 'All'];
+const DATE_FILTERS = ['24h', '7d', '30d', 'All time'];
+
+function dateFromFilter(label) {
+    const now = new Date();
+    if (label === '24h') return new Date(now - 24 * 60 * 60 * 1000).toISOString();
+    if (label === '7d') return new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+    if (label === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+    return null;
 }
 
 /**
- * MapPage — primary "home" view of the patrol app.
+ * MapPage — primary home view.
  *
- * Layout overview:
- *   • Full-bleed leaflet map underneath (`GroveMap`).
- *   • Floating top app bar with counts (critical / active / resolved).
- *   • Horizontal filter chip strip below.
- *   • Right-side legend, left-side zoom stack.
- *   • Bottom sheet listing the most recent reports.
- *   • Clay FAB ("+ Report") jutting out of the sheet, routes to /report.
- *
- * Data: pulled from `useIncidents` (Supabase realtime). The filter chips
- * are wired to a local state hook; selecting a chip restricts the bottom
- * sheet listing. "Mark resolved" updates Supabase, which auto-removes the
- * pin via the realtime subscription.
+ * Reads from the `reports` table (not the old `incidents` table).
+ * Supports status + date filters, admin resolve/dismiss actions, and
+ * real-time updates via useReports.
  */
 function MapPage() {
-    const { incidents, loading } = useIncidents();
     const navigate = useNavigate();
-    const [activeFilter, setActiveFilter] = useState('Last 24 h');
-    const isAdmin = true; // TODO: gate behind real auth when the auth flow lands
-    const myHandle = (typeof localStorage !== 'undefined' && localStorage.getItem('savekbr.handle')) || '';
+    const [statusFilter, setStatusFilter] = useState('Active');
+    const [dateFilter, setDateFilter] = useState('All time');
+    const isAdmin = true; // TODO: gate behind real auth
 
-    const handleResolve = async (id) => {
-        const { error } = await supabase.from('incidents').update({ status: 'resolved' }).eq('id', id);
-        if (error) console.error('Failed to resolve incident:', error);
+    const statusParam = statusFilter.toLowerCase(); // 'active' | 'resolved' | 'all'
+    const dateFromParam = dateFromFilter(dateFilter);
+
+    const { reports, loading } = useReports({
+        status: statusParam,
+        dateFrom: dateFromParam,
+    });
+
+    const handleResolve = async (id, oldStatus) => {
+        const { error } = await supabase
+            .from('reports')
+            .update({ status: 'resolved', updated_at: new Date().toISOString() })
+            .eq('id', id);
+        if (!error) {
+            await supabase.from('report_history').insert({
+                report_id: id,
+                old_status: oldStatus,
+                new_status: 'resolved',
+                admin_identifier:
+                    (typeof localStorage !== 'undefined' && localStorage.getItem('savekbr.handle')) ||
+                    'admin',
+            });
+        }
     };
 
-    /**
-     * Apply the currently selected filter chip to the incident feed. The
-     * map and the bottom sheet share the same filtered list so they never
-     * disagree about what's "active".
-     */
-    const visible = useMemo(() => {
-        const within24h = (i) => (Date.now() - new Date(i.created_at).getTime()) < 24 * 60 * 60 * 1000;
-        switch (activeFilter) {
-            case 'Critical': return incidents.filter((i) => severityFromIncident(i) === 'critical');
-            case 'Active':   return incidents.filter((i) => severityFromIncident(i) === 'active');
-            case 'Resolved': return incidents.filter((i) => severityFromIncident(i) === 'resolved');
-            case 'Mine':     return incidents.filter((i) => i.reporter && myHandle && i.reporter === myHandle);
-            case 'Last 24 h':
-            default:         return incidents.filter(within24h);
+    const handleDismiss = async (id, oldStatus) => {
+        const { error } = await supabase
+            .from('reports')
+            .update({ status: 'dismissed', updated_at: new Date().toISOString() })
+            .eq('id', id);
+        if (!error) {
+            await supabase.from('report_history').insert({
+                report_id: id,
+                old_status: oldStatus,
+                new_status: 'dismissed',
+                admin_identifier:
+                    (typeof localStorage !== 'undefined' && localStorage.getItem('savekbr.handle')) ||
+                    'admin',
+            });
         }
-    }, [incidents, activeFilter, myHandle]);
+    };
 
-    /**
-     * Bucket counts for the top-bar summary. Always computed off the full
-     * unfiltered feed so the user sees the true totals even while a chip
-     * is restricting the view.
-     */
     const counts = useMemo(() => {
-        const c = { critical: 0, active: 0, resolved: 0 };
-        for (const i of incidents) c[severityFromIncident(i)] = (c[severityFromIncident(i)] || 0) + 1;
+        const c = { active: 0, resolved: 0, dismissed: 0 };
+        for (const r of reports) c[r.status] = (c[r.status] || 0) + 1;
         return c;
-    }, [incidents]);
+    }, [reports]);
 
     return (
         <div className="w-full h-full relative" style={{ background: '#e3dfcf' }}>
             {/* Map base layer */}
             <div className="absolute inset-0 z-0">
-                <GroveMap incidents={visible} onDeleteIncident={handleResolve} isAdmin={isAdmin} />
+                <GroveMap
+                    reports={reports}
+                    onResolve={handleResolve}
+                    onDismiss={handleDismiss}
+                    isAdmin={isAdmin}
+                />
             </div>
 
             {/* Loading shimmer */}
             {loading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center" style={{ background: 'rgba(239,236,226,0.85)' }}>
-                    <div className="text-ink-soft text-sm font-medium animate-pulse">Loading patrol data…</div>
+                <div
+                    className="absolute inset-0 z-10 flex items-center justify-center"
+                    style={{ background: 'rgba(239,236,226,0.85)' }}
+                >
+                    <div className="text-ink-soft text-sm font-medium animate-pulse">
+                        Loading patrol data…
+                    </div>
                 </div>
             )}
 
-            {/* Top app bar — KBR title + counts + search */}
+            {/* Top app bar */}
             <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -110,11 +122,28 @@ function MapPage() {
                     }}
                 >
                     <div className="flex-1 min-w-0">
-                        <div className="text-[14.5px] font-semibold leading-tight text-ink">KBR National Park</div>
+                        <div className="text-[14.5px] font-semibold leading-tight text-ink">
+                            KBR National Park
+                        </div>
                         <div className="text-[11px] mt-0.5 flex gap-2.5" style={{ color: G.inkSoft }}>
-                            <span><span style={{ color: G.clay, fontWeight: 600 }}>{counts.critical}</span> critical</span>
-                            <span><span style={{ color: G.amber, fontWeight: 600 }}>{counts.active}</span> active</span>
-                            <span><span style={{ color: G.leaf, fontWeight: 600 }}>{counts.resolved}</span> resolved</span>
+                            <span>
+                                <span style={{ color: ECO_GREEN, fontWeight: 600 }}>
+                                    {counts.active}
+                                </span>{' '}
+                                active
+                            </span>
+                            <span>
+                                <span style={{ color: G.leaf, fontWeight: 600 }}>
+                                    {counts.resolved}
+                                </span>{' '}
+                                resolved
+                            </span>
+                            <span>
+                                <span style={{ color: G.inkMute, fontWeight: 600 }}>
+                                    {reports.length}
+                                </span>{' '}
+                                visible
+                            </span>
                         </div>
                     </div>
                     <button
@@ -128,20 +157,45 @@ function MapPage() {
                 </div>
             </motion.div>
 
-            {/* Filter chips */}
+            {/* Status filter chips */}
             <div className="absolute top-[78px] left-0 right-0 px-3.5 z-20 flex gap-1.5 overflow-x-auto sk-no-scrollbar">
-                {FILTERS.map((label) => {
-                    const on = label === activeFilter;
+                {STATUS_FILTERS.map((label) => {
+                    const on = label === statusFilter;
                     return (
                         <button
                             key={label}
-                            onClick={() => setActiveFilter(label)}
+                            onClick={() => setStatusFilter(label)}
+                            className="px-3 py-1.5 rounded-full text-[12.5px] font-medium whitespace-nowrap"
+                            style={{
+                                background: on ? ECO_GREEN : 'rgba(255,255,255,0.92)',
+                                color: on ? '#fff' : G.ink,
+                                border: on ? 'none' : `1px solid ${G.line}`,
+                                boxShadow: on ? `0 4px 10px -6px ${ECO_GREEN}88` : 'none',
+                            }}
+                            type="button"
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+
+                {/* Divider dot */}
+                <span className="flex items-center text-[12px] px-0.5" style={{ color: G.inkMute }}>
+                    ·
+                </span>
+
+                {DATE_FILTERS.map((label) => {
+                    const on = label === dateFilter;
+                    return (
+                        <button
+                            key={label}
+                            onClick={() => setDateFilter(label)}
                             className="px-3 py-1.5 rounded-full text-[12.5px] font-medium whitespace-nowrap"
                             style={{
                                 background: on ? G.forest : 'rgba(255,255,255,0.92)',
                                 color: on ? G.bg : G.ink,
                                 border: on ? 'none' : `1px solid ${G.line}`,
-                                boxShadow: on ? '0 4px 10px -6px rgba(31,51,34,0.5)' : 'none',
+                                boxShadow: on ? '0 4px 10px -6px rgba(31,51,34,0.45)' : 'none',
                             }}
                             type="button"
                         >
@@ -151,28 +205,34 @@ function MapPage() {
                 })}
             </div>
 
-            {/* Legend (right) */}
-            <div
-                className="absolute right-3.5 top-[140px] z-20 rounded-[10px] px-2.5 py-2 text-[11.5px] leading-[1.7]"
-                style={{ background: 'rgba(255,255,255,0.92)', border: `1px solid ${G.hairline}`, color: G.inkSoft }}
-            >
-                <LegendRow color={G.clay} label="Critical" />
-                <LegendRow color={G.amber} label="Active" />
-                <LegendRow color={G.leaf} label="Resolved" />
-            </div>
-
-            {/* Locate-me (left). Leaflet's own zoom controls are disabled in
-                GroveMap — clicking this asks the browser for the user's
-                current position and pans there with `flyTo`. */}
+            {/* Locate-me button */}
             <div className="absolute left-3.5 top-[140px] z-20">
                 <button
                     className="w-9 h-9 rounded-[10px] flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.92)', border: `1px solid ${G.hairline}`, color: G.forest }}
+                    style={{
+                        background: 'rgba(255,255,255,0.92)',
+                        border: `1px solid ${G.hairline}`,
+                        color: G.forest,
+                    }}
                     aria-label="Locate me"
                     type="button"
                 >
                     <Locate className="w-4 h-4" strokeWidth={1.6} />
                 </button>
+            </div>
+
+            {/* Legend */}
+            <div
+                className="absolute right-3.5 top-[140px] z-20 rounded-[10px] px-2.5 py-2 text-[11.5px] leading-[1.7]"
+                style={{
+                    background: 'rgba(255,255,255,0.92)',
+                    border: `1px solid ${G.hairline}`,
+                    color: G.inkSoft,
+                }}
+            >
+                <LegendRow color={ECO_GREEN} label="Active" />
+                <LegendRow color={G.leaf} label="Resolved" />
+                <LegendRow color={G.inkMute} label="Historical" opacity={0.45} />
             </div>
 
             {/* Bottom sheet */}
@@ -188,36 +248,36 @@ function MapPage() {
                     boxShadow: '0 -14px 32px -16px rgba(31,51,34,0.3)',
                 }}
             >
-                <div className="mx-auto mb-2.5 h-1 w-9 rounded-full" style={{ background: G.line }} />
+                <div
+                    className="mx-auto mb-2.5 h-1 w-9 rounded-full"
+                    style={{ background: G.line }}
+                />
                 <div className="flex items-baseline justify-between mb-2.5">
-                    <div className="text-[15px] font-semibold text-ink">Nearby reports</div>
+                    <div className="text-[15px] font-semibold text-ink">Reports</div>
                     <div className="text-[11.5px]" style={{ color: G.inkMute }}>
-                        {visible.length} {visible.length === 1 ? 'report' : 'reports'}
+                        {reports.length} {reports.length === 1 ? 'report' : 'reports'}
                     </div>
                 </div>
 
-                {/* Listing — show up to three; if there's nothing, show a friendly empty state */}
                 <div className="max-h-[34vh] overflow-y-auto sk-no-scrollbar">
-                    {visible.length === 0 ? (
+                    {reports.length === 0 ? (
                         <div className="py-6 text-center text-[13px]" style={{ color: G.inkMute }}>
-                            No reports match this filter yet.
+                            No reports match this filter.
                         </div>
                     ) : (
-                        visible.slice(0, 5).map((inc) => (
-                            <SheetReportRow key={inc.id} incident={inc} />
-                        ))
+                        reports.slice(0, 5).map((r) => <SheetReportRow key={r.id} report={r} />)
                     )}
                 </div>
 
-                {/* Floating FAB */}
+                {/* FAB */}
                 <button
                     onClick={() => navigate('/report')}
                     className="absolute right-4 -top-7 h-[60px] rounded-[30px] pl-4 pr-5 flex items-center gap-2.5 text-[15px] font-semibold cursor-pointer"
                     style={{
-                        background: G.clay,
-                        color: G.bg,
+                        background: ECO_GREEN,
+                        color: '#fff',
                         border: 'none',
-                        boxShadow: '0 14px 30px -10px rgba(204,90,58,0.55)',
+                        boxShadow: `0 14px 30px -10px ${ECO_GREEN}88`,
                     }}
                     type="button"
                 >
@@ -234,45 +294,58 @@ function MapPage() {
     );
 }
 
-function LegendRow({ color, label }) {
+function LegendRow({ color, label, opacity = 1 }) {
     return (
         <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full" style={{ background: color }} />
+            <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{ background: color, opacity }}
+            />
             {label}
         </div>
     );
 }
 
-function SheetReportRow({ incident }) {
-    const severity = severityFromIncident(incident);
-    const c = severityColor(severity);
+function SheetReportRow({ report }) {
+    const hist = isHistorical(report.created_at);
     return (
         <Link
-            to={`/report/${incident.id}`}
+            to={`/report/${report.id}`}
             className="flex items-center gap-3 py-2.5 border-t"
-            style={{ borderColor: G.hairline }}
+            style={{ borderColor: G.hairline, opacity: hist ? 0.6 : 1 }}
         >
             <div
-                className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0"
-                style={{ background: `${c}1a` }}
+                className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ background: `${ECO_GREEN}18` }}
             >
-                <span className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
+                {report.photo_urls?.[0] ? (
+                    <img
+                        src={report.photo_urls[0]}
+                        alt=""
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ background: ECO_GREEN }}
+                    />
+                )}
             </div>
             <div className="flex-1 min-w-0">
                 <div className="text-[14px] font-semibold text-ink leading-tight truncate">
-                    {incident.type || incident.title || 'Tree-felling report'}
+                    {report.reporter_name}
                 </div>
-                <div className="text-[12px] mt-0.5" style={{ color: G.inkMute }}>
-                    {shortAgo(incident.created_at)}
-                    {incident.reporter && (
-                        <>
-                            {' · '}
-                            <span style={{ color: G.forest }}>@{incident.reporter}</span>
-                        </>
-                    )}
+                <div className="text-[12px] mt-0.5 truncate" style={{ color: G.inkMute }}>
+                    {timeAgo(report.created_at)}
+                    {hist && ' · Historical'}
+                    {report.description && ` · ${report.description.slice(0, 40)}…`}
                 </div>
             </div>
-            <ChevronRight className="w-3.5 h-3.5" style={{ color: G.inkSoft }} strokeWidth={1.6} />
+            <ChevronRight
+                className="w-3.5 h-3.5 flex-shrink-0"
+                style={{ color: G.inkSoft }}
+                strokeWidth={1.6}
+            />
         </Link>
     );
 }
