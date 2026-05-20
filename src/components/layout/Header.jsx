@@ -48,15 +48,7 @@ function Header({ className }) {
 
             {/* Right — patrolling pill, status, clock */}
             <div className="flex items-center gap-3 md:gap-5">
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                    style={{ background: 'rgba(94, 139, 74, 0.12)', color: 'var(--grove-leaf)' }}
-                >
-                    <span className="w-1.5 h-1.5 rounded-full bg-leaf inline-block" />
-                    348 patrolling
-                </motion.div>
+
 
                 <div className="flex items-center gap-1.5 text-ink-soft">
                     {isOnline ? <Wifi className="w-4 h-4 text-forest" /> : <WifiOff className="w-4 h-4 text-ink-mute" />}

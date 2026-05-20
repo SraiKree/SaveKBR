@@ -55,13 +55,6 @@ function OnboardingPage() {
                             <div className="text-[10.5px] text-ink-mute mt-0.5 tracking-wider">Volunteer · Hyderabad</div>
                         </div>
                     </div>
-                    <div
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                        style={{ background: `${G.leaf}1f`, color: G.leaf }}
-                    >
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: G.leaf }} />
-                        348 patrolling
-                    </div>
                 </div>
 
                 {/* Hero — concentric contours of the park */}
@@ -74,7 +67,7 @@ function OnboardingPage() {
                     <svg viewBox="0 0 390 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
                         <defs>
                             <linearGradient id="groveSky" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%"   stopColor="#efece2" />
+                                <stop offset="0%" stopColor="#efece2" />
                                 <stop offset="100%" stopColor="#e2dfce" />
                             </linearGradient>
                         </defs>
@@ -104,21 +97,21 @@ function OnboardingPage() {
                             ))}
                             {/* filled centre */}
                             <path d="M -40 0 C -40 -30, -15 -45, 10 -42 C 35 -40, 50 -20, 48 5 C 45 28, 18 42, -10 38 C -32 35, -40 18, -40 0 Z"
-                                  fill={G.leaf} opacity="0.28" />
+                                fill={G.leaf} opacity="0.28" />
                             {/* scattered pins */}
                             <g>
                                 <circle cx="-30" cy="-50" r="4" fill={G.clay} />
-                                <circle cx="55"  cy="-20" r="4" fill={G.clay} />
-                                <circle cx="60"  cy="55"  r="4" fill={G.amber} />
-                                <circle cx="-65" cy="30"  r="4" fill={G.amber} />
-                                <circle cx="-10" cy="70"  r="4" fill={G.leaf} />
-                                <circle cx="0"   cy="-5"  r="6" fill={G.forest} stroke="#fff" strokeWidth="2" />
-                                <circle cx="0"   cy="-5"  r="14" fill={G.forest} opacity="0.18" />
+                                <circle cx="55" cy="-20" r="4" fill={G.clay} />
+                                <circle cx="60" cy="55" r="4" fill={G.amber} />
+                                <circle cx="-65" cy="30" r="4" fill={G.amber} />
+                                <circle cx="-10" cy="70" r="4" fill={G.leaf} />
+                                <circle cx="0" cy="-5" r="6" fill={G.forest} stroke="#fff" strokeWidth="2" />
+                                <circle cx="0" cy="-5" r="14" fill={G.forest} opacity="0.18" />
                             </g>
                         </g>
 
                         {/* corner labels */}
-                        <text x="22" y="26"  fontFamily={G.ui} fontSize="10" fontWeight="500" fill={G.inkMute} letterSpacing="0.04em">KBR National Park</text>
+                        <text x="22" y="26" fontFamily={G.ui} fontSize="10" fontWeight="500" fill={G.inkMute} letterSpacing="0.04em">KBR National Park</text>
                         <text x="368" y="26" fontFamily={G.ui} fontSize="10" fontWeight="500" fill={G.inkMute} letterSpacing="0.04em" textAnchor="end">11 km loop</text>
                         <text x="22" y="284" fontFamily={G.mono} fontSize="9" fill={G.inkMute}>17.41° N</text>
                         <text x="368" y="284" fontFamily={G.mono} fontSize="9" fill={G.inkMute} textAnchor="end">78.43° E</text>

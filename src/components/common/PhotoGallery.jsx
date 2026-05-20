@@ -3,14 +3,17 @@ import { PhotoLightbox } from './PhotoLightbox';
 
 /**
  * PhotoGallery — thumbnail grid for up to 3 evidence photos.
+ * Each thumbnail shows a skeleton-striped placeholder until the image loads.
  * Clicking any thumbnail opens the full-screen PhotoLightbox.
  */
 function PhotoGallery({ urls = [], className }) {
     const [lightboxIdx, setLightboxIdx] = useState(null);
+    const [loadedUrls, setLoadedUrls] = useState(new Set());
     const showing = urls.slice(0, 3);
     if (showing.length === 0) return null;
 
     const cols = showing.length === 1 ? 'grid-cols-1' : 'grid-cols-3';
+    const markLoaded = (url) => setLoadedUrls((prev) => new Set([...prev, url]));
 
     return (
         <>
@@ -21,15 +24,21 @@ function PhotoGallery({ urls = [], className }) {
                         type="button"
                         onClick={() => setLightboxIdx(i)}
                         className="relative overflow-hidden rounded-[6px] aspect-square hover:opacity-90 transition-opacity"
-                        style={{ background: 'rgba(28,33,28,0.06)' }}
                         aria-label={`View photo ${i + 1}`}
                     >
+                        {/* Skeleton shown while the image is still fetching */}
+                        {!loadedUrls.has(url) && (
+                            <div className="skeleton-striped absolute inset-0 border border-base-content/20" />
+                        )}
                         <img
                             src={url}
                             alt={`Evidence photo ${i + 1}`}
                             loading="lazy"
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            onLoad={() => markLoaded(url)}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; markLoaded(url); }}
+                            className={`w-full h-full object-cover transition-opacity duration-300 ${
+                                loadedUrls.has(url) ? 'opacity-100' : 'opacity-0'
+                            }`}
                         />
                     </button>
                 ))}

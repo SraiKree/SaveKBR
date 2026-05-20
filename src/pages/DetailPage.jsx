@@ -65,10 +65,36 @@ function DetailPage() {
     if (loading) {
         return (
             <div
-                className="w-full h-full flex items-center justify-center"
+                className="w-full h-full overflow-y-auto sk-no-scrollbar"
                 style={{ background: G.bg }}
             >
-                <div className="text-ink-soft text-sm animate-pulse">Loading report…</div>
+                <div className="max-w-[480px] mx-auto">
+                    {/* Hero image skeleton */}
+                    <div className="skeleton-striped h-[270px] w-full border border-base-content/20" />
+
+                    <div className="px-5 pt-5 pb-8 space-y-4">
+                        {/* Badge + ticket row */}
+                        <div className="flex items-center justify-between">
+                            <div className="skeleton-striped h-6 w-24 rounded-box border border-base-content/20" />
+                            <div className="skeleton-striped h-4 w-20 rounded-box border border-base-content/20" />
+                        </div>
+
+                        {/* Title */}
+                        <div className="skeleton-striped h-8 w-4/5 rounded-box border border-base-content/20" />
+
+                        {/* Subtitle / reporter line */}
+                        <div className="skeleton-striped h-4 w-3/5 rounded-box border border-base-content/20" />
+
+                        {/* Description block */}
+                        <div className="skeleton-striped h-16 w-full rounded-box border border-base-content/20" />
+
+                        {/* Meta grid */}
+                        <div className="skeleton-striped h-32 w-full rounded-box border border-base-content/20" />
+
+                        {/* Mini-map */}
+                        <div className="skeleton-striped h-[130px] w-full rounded-box border border-base-content/20" />
+                    </div>
+                </div>
             </div>
         );
     }

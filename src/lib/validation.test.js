@@ -322,13 +322,21 @@ describe('Date Filter Accuracy (Property 10)', () => {
   });
 
   test('visible count equals filtered reports length', () => {
+    const MIN_MS = Date.parse('2024-01-01');
+    const NOW_MS = Date.parse('2026-01-01'); // fixed ceiling avoids invalid-date edge cases
     fc.assert(
       fc.property(
         fc.array(
-          fc.record({ id: fc.uuid(), created_at: fc.date({ min: new Date('2024-01-01') }).map((d) => d.toISOString()) }),
+          fc.record({
+            id: fc.uuid(),
+            created_at: fc.integer({ min: MIN_MS, max: NOW_MS }).map((ms) => new Date(ms).toISOString()),
+          }),
           { minLength: 0, maxLength: 20 }
         ),
-        fc.option(fc.date({ min: new Date('2024-01-01'), max: new Date() }).map((d) => d.toISOString()), { nil: null }),
+        fc.option(
+          fc.integer({ min: MIN_MS, max: NOW_MS }).map((ms) => new Date(ms).toISOString()),
+          { nil: null }
+        ),
         (reports, dateFrom) => {
           const filtered = applyDateFilter(reports, dateFrom);
           expect(filtered.length).toBeLessThanOrEqual(reports.length);
