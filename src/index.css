@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Grove design tokens — warm off-white background, forest green primary,
+ * leaf/clay/amber accents. Mirrors the spec in _designs/direction-grove.jsx
+ * and the Grove "G" constant. Tokens are exposed as both HSL CSS variables
+ * (so Tailwind utilities like bg-background pick them up) and raw hex
+ * variables (so SVG fill="var(--grove-forest)" etc. work in inline styles).
+ */
+@layer base {
+  :root {
+    /* Tailwind-mapped tokens (HSL triplets — used by `hsl(var(--token))`) */
+    --background: 48 22% 91%;          /* #efece2 paper */
+    --foreground: 120 7% 12%;          /* #1c211c ink */
+    --surface: 47 33% 95%;             /* #f7f5ec raised surface */
+    --muted: 78 5% 33%;                /* #56594f soft ink */
+    --muted-foreground: 76 5% 53%;     /* #8a8d80 mute ink */
+    --border: 120 7% 12%;              /* used at 10% alpha via /10 utility */
+    --ring: 125 22% 24%;               /* forest focus ring */
+
+    /* Brand / semantic */
+    --forest: 125 22% 24%;             /* #2f4a32 */
+    --forest-deep: 130 25% 16%;        /* #1f3322 */
+    --leaf: 103 30% 42%;               /* #5e8b4a */
+    --clay: 13 58% 51%;                /* #cc5a3a */
+    --amber: 41 65% 53%;               /* #d4a23a */
+
+    /* Raw hex copies, for inline SVG / leaflet / canvas usage */
+    --grove-bg: #efece2;
+    --grove-surf: #f7f5ec;
+    --grove-white: #ffffff;
+    --grove-ink: #1c211c;
+    --grove-ink-soft: #56594f;
+    --grove-ink-mute: #8a8d80;
+    --grove-forest: #2f4a32;
+    --grove-forest-deep: #1f3322;
+    --grove-leaf: #5e8b4a;
+    --grove-clay: #cc5a3a;
+    --grove-amber: #d4a23a;
+    --grove-line: rgba(28, 33, 28, 0.10);
+    --grove-hairline: rgba(28, 33, 28, 0.06);
+
+    --radius: 0.75rem;                 /* 12px — Grove cards (radii 10/12/14) */
+  }
+
+  * {
+    border-color: hsl(var(--foreground) / 0.10);
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    letter-spacing: -0.005em;
+  }
+
+  /* Light-theme scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--foreground) / 0.15); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground) / 0.25); }
+}
+
+@layer components {
+  /* Hide scrollbar on filter chip strips, sheets, etc. */
+  .sk-no-scrollbar::-webkit-scrollbar { display: none; }
+  .sk-no-scrollbar { scrollbar-width: none; }
+
+  /* Grove card surface */
+  .grove-card {
+    background: var(--grove-white);
+    border: 1px solid var(--grove-hairline);
+    border-radius: 12px;
+  }
+
+  /* Grove primary button (forest) */
+  .grove-btn-primary {
+    background: var(--grove-forest);
+    color: var(--grove-bg);
+    border-radius: 14px;
+    font-weight: 600;
+    box-shadow: 0 12px 28px -12px rgba(31, 51, 34, 0.55);
+  }
+  .grove-btn-primary:hover { background: var(--grove-forest-deep); }
+
+  /* Grove alert (clay) button */
+  .grove-btn-alert {
+    background: var(--grove-clay);
+    color: var(--grove-bg);
+    border-radius: 14px;
+    font-weight: 600;
+    box-shadow: 0 14px 30px -10px rgba(204, 90, 58, 0.55);
+  }
+
+  /* Leaflet popup re-skin to Grove */
+  .leaflet-popup-content-wrapper {
+    background: var(--grove-white) !important;
+    color: var(--grove-ink) !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--grove-hairline) !important;
+    box-shadow: 0 14px 32px -16px rgba(31, 51, 34, 0.35) !important;
+  }
+  .leaflet-popup-tip { background: var(--grove-white) !important; }
+  .leaflet-container { background: #e3dfcf; font-family: 'DM Sans', system-ui, sans-serif; }
+
+  /* Faint grid backdrop, optionally usable as a hero accent */
+  .grove-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--foreground) / 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@layer utilities {
+  .font-mono-coords { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .text-grove-forest { color: var(--grove-forest); }
+  .text-grove-leaf   { color: var(--grove-leaf); }
+  .text-grove-clay   { color: var(--grove-clay); }
+  .text-grove-amber  { color: var(--grove-amber); }
+  .bg-grove-forest   { background-color: var(--grove-forest); }
+  .bg-grove-leaf     { background-color: var(--grove-leaf); }
+  .bg-grove-clay     { background-color: var(--grove-clay); }
+  .bg-grove-amber    { background-color: var(--grove-amber); }
+}
