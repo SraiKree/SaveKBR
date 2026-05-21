@@ -180,7 +180,7 @@ function OnboardingPage() {
 
                     <div className="text-center mt-2.5 text-[11.5px]" style={{ color: G.inkMute }}>
                         Open-source · volunteer-run ·{' '}
-                        <Link to="/map" style={{ color: G.forest, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                        <Link to="/how-it-works" style={{ color: G.forest, textDecoration: 'underline', textUnderlineOffset: 2 }}>
                             how it works
                         </Link>
                     </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Locate, ChevronRight } from 'lucide-react';
 import { GroveMap } from '../components/dashboard';
@@ -32,6 +32,7 @@ function MapPage() {
     const navigate = useNavigate();
     const [statusFilter, setStatusFilter] = useState('Active');
     const [dateFilter, setDateFilter] = useState('All time');
+    const [mapReady, setMapReady] = useState(false);
     const isAdmin = true; // TODO: gate behind real auth
 
     const statusParam = statusFilter.toLowerCase(); // 'active' | 'resolved' | 'all'
@@ -91,20 +92,45 @@ function MapPage() {
                     onResolve={handleResolve}
                     onDismiss={handleDismiss}
                     isAdmin={isAdmin}
+                    onTilesLoaded={() => setMapReady(true)}
                 />
             </div>
 
-            {/* Loading shimmer */}
-            {loading && (
-                <div
-                    className="absolute inset-0 z-10 flex items-center justify-center"
-                    style={{ background: 'rgba(239,236,226,0.85)' }}
-                >
-                    <div className="text-ink-soft text-sm font-medium animate-pulse">
-                        Loading patrol data…
-                    </div>
-                </div>
-            )}
+            {/* Map + data loading overlay. Stays up until both the leaflet
+                tiles have rendered (onTilesLoaded fires) AND the Supabase
+                reports query has settled. Fades out so the underlying map
+                doesn't pop. */}
+            <AnimatePresence>
+                {(loading || !mapReady) && (
+                    <motion.div
+                        key="map-loader"
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.45, ease: 'easeOut' }}
+                        className="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none"
+                        style={{ background: G.bg }}
+                    >
+                        <MapLoaderRings />
+                        <div
+                            className="mt-5 text-[13px] font-semibold tracking-wide"
+                            style={{ color: G.forest }}
+                        >
+                            Loading map…
+                        </div>
+                        <div
+                            className="mt-1 text-[11.5px]"
+                            style={{ color: G.inkMute }}
+                        >
+                            {loading && !mapReady
+                                ? 'Fetching tiles and patrol data'
+                                : !mapReady
+                                    ? 'Fetching tiles'
+                                    : 'Fetching patrol data'}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Top app bar */}
             <motion.div
@@ -290,6 +316,42 @@ function MapPage() {
                     Report
                 </button>
             </motion.div>
+        </div>
+    );
+}
+
+/**
+ * MapLoaderRings — Grove-flavoured spinner shown while the leaflet tiles
+ * and patrol reports are loading. Three concentric park-contour rings
+ * pulse in sequence with a single pin in the middle, echoing the splash.
+ */
+function MapLoaderRings() {
+    return (
+        <div className="relative w-[72px] h-[72px]">
+            {[0, 1, 2].map((i) => (
+                <motion.span
+                    key={i}
+                    className="absolute inset-0 rounded-full border-2"
+                    style={{ borderColor: G.forest, opacity: 0.5 - i * 0.15 }}
+                    initial={{ scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: [0, 0.4, 0] }}
+                    transition={{
+                        duration: 1.6,
+                        ease: 'easeOut',
+                        repeat: Infinity,
+                        delay: i * 0.45,
+                    }}
+                />
+            ))}
+            <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                    className="w-3.5 h-3.5 rounded-full"
+                    style={{
+                        background: G.forest,
+                        boxShadow: `0 0 0 4px ${G.forest}22`,
+                    }}
+                />
+            </div>
         </div>
     );
 }

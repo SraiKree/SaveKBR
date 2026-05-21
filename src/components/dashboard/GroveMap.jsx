@@ -63,6 +63,7 @@ function GroveMap({
     center = DEFAULT_CENTER,
     zoom = DEFAULT_ZOOM,
     className,
+    onTilesLoaded,
 }) {
     const activeIcon = useMemo(() => createEcoPin(1), []);
     const histIcon = useMemo(() => createEcoPin(0.45), []);
@@ -86,6 +87,9 @@ function GroveMap({
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    eventHandlers={{
+                        load: () => onTilesLoaded?.(),
+                    }}
                 />
 
                 {reports.map((report) => {

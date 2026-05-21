@@ -1,5 +1,6 @@
 // Pages
 export { default as OnboardingPage } from './OnboardingPage';
+export { default as HowItWorksPage } from './HowItWorksPage';
 export { default as MapPage } from './MapPage';
 export { default as ReportPage } from './ReportPage';
 export { default as DetailPage } from './DetailPage';

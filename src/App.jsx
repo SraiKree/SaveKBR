@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout';
-import { OnboardingPage, MapPage, ReportPage, DetailPage } from './pages';
+import { OnboardingPage, HowItWorksPage, MapPage, ReportPage, DetailPage } from './pages';
 import './index.css';
 
 /**
@@ -22,6 +22,7 @@ function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<OnboardingPage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
 
                 <Route element={<AppShell />}>
                     <Route path="/map" element={<MapPage />} />
